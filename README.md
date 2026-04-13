@@ -1,5 +1,6 @@
 # proyecto_desarrollo
 
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 <<<<<<< HEAD
 Juanpi, Agus, santi, nico, carlos
@@ -14,3 +15,6 @@ juanpi crack
 cheee ya sabemos como agregar
 nico crack 
 carlos reta hola
+=======
+no me sale nada jp
+>>>>>>> 45632fea2910870989e276439cef9f8e2e1db2a9
