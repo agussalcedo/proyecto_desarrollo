@@ -2,7 +2,7 @@
 
 <<<<<<< Updated upstream
 <<<<<<< HEAD
-Juanpi, Agus, santi, nico
+Juanpi, Agus, santi, nico, carlos
 =======
 Juanpi y Agus cesar
 >>>>>>> aa8f14ca5e137ea3ea0ff1d2232b7e0b5b73d93a
@@ -13,3 +13,4 @@ juanpi crack
 >>>>>>> Stashed changes
 cheee ya sabemos como agregar
 nico crack 
+carlos reta
