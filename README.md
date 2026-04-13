@@ -1,3 +1,3 @@
 # proyecto_desarrollo
 
-Juanpi y Agus
+Juanpi, Agus, santi, nico
