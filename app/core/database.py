@@ -1,25 +1,16 @@
-"""
-Database connection and session management.
-"""
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from motor.motor_asyncio import AsyncIOMotorClient
+import os
 
-from app.core.config import settings
+# URL y nombre de la base de datos
+MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017/")
+DB_NAME = os.getenv("MONGO_DB_NAME", "proyecto_desarrollo")
 
-engine = create_engine(
-    settings.DATABASE_URL,
-    connect_args={"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {}
-)
+client = AsyncIOMotorClient(MONGO_URL)
+database = client.get_database(DB_NAME)
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base = declarative_base()
-
-
-def get_db():
-    db = SessionLocal()
+async def check_db_connection():
     try:
-        yield db
-    finally:
-        db.close()
+        await client.admin.command("ping")
+        print(f"¡Conexión exitosa a la base de datos: {DB_NAME}")
+    except Exception as e:
+        print(f"Error de conexión: {e}")
