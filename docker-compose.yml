@@ -1,0 +1,16 @@
+services:
+  mongo:
+    image: mongo:latest
+    container_name: proyecto_desarrollo_db
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      # Definimos un usuario y contraseña por defecto para que todos usen el mismo
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password123
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
