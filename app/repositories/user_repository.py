@@ -1,43 +1,38 @@
-"""
-Repositories - Data Access Layer
-"""
 from typing import Optional, List
-
-from sqlalchemy.orm import Session
-
-from app.models.user_model import User
-
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from bson import ObjectId
 
 class UserRepository:
-    def __init__(self, db: Session):
-        self.db = db
+    def __init__(self, database: AsyncIOMotorDatabase):
+        self.collection = database.get_collection("users")
 
-    def get_by_id(self, user_id: int) -> Optional[User]:
-        return self.db.query(User).filter(User.id == user_id).first()
+    async def get_by_id(self, user_id: str) -> Optional[dict]:
+        document = await self.collection.find_one({"_id": ObjectId(user_id)})
+        if document:
+            document["id"] = str(document.pop("_id"))
+        return document
 
-    def get_by_email(self, email: str) -> Optional[User]:
-        return self.db.query(User).filter(User.email == email).first()
+    async def get_by_email(self, email: str) -> Optional[dict]:
+        document = await self.collection.find_one({"email": email})
+        if document:
+            document["id"] = str(document.pop("_id"))
+        return document
 
-    def get_by_username(self, username: str) -> Optional[User]:
-        return self.db.query(User).filter(User.username == username).first()
+    async def get_all(self, skip: int = 0, limit: int = 100) -> List[dict]:
+        cursor = self.collection.find().skip(skip).limit(limit)
+        users = []
+        for doc in await cursor.to_list(length=limit):
+            doc["id"] = str(doc.pop("_id"))
+            users.append(doc)
+        return users
 
-    def get_all(self, skip: int = 0, limit: int = 100) -> List[User]:
-        return self.db.query(User).offset(skip).limit(limit).all()
+    async def create(self, user_data: dict) -> dict:
+        result = await self.collection.insert_one(user_data)
+        user_data["id"] = str(result.inserted_id)
+        if "_id" in user_data:
+            del user_data["_id"]
+        return user_data
 
-    def create(self, user: User) -> User:
-        self.db.add(user)
-        self.db.commit()
-        self.db.refresh(user)
-        return user
-
-    def update(self, user: User) -> User:
-        self.db.commit()
-        self.db.refresh(user)
-        return user
-
-    def delete(self, user: User) -> None:
-        self.db.delete(user)
-        self.db.commit()
-
-    def exists(self, user_id: int) -> bool:
-        return self.db.query(User).filter(User.id == user_id).first() is not None
+    async def delete(self, user_id: str) -> bool:
+        result = await self.collection.delete_one({"_id": ObjectId(user_id)})
+        return result.deleted_count > 0

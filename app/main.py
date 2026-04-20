@@ -4,10 +4,8 @@ FastAPI Application Entry Point
 from fastapi import FastAPI
 
 from app.core.config import settings
-from app.core.database import engine, Base
+from app.core.database import check_db_connection 
 from app.routes.user_routes import router as user_router
-
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title=settings.APP_NAME,

@@ -1,29 +1,30 @@
 """
-Data models - Data Access Layer
+Data models - Data Access Layer (MongoDB/Pydantic Edition)
 """
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
-from sqlalchemy.sql import func
+from pydantic import BaseModel, Field, EmailStr
+from datetime import datetime
+from typing import Optional
 
-from app.core.database import Base
+class User(BaseModel):
+    """
+    Modelo de Usuario siguiendo el principio KISS (Mantenerlo Simple).
+    Usamos Pydantic para validar los datos antes de que lleguen a la DB.
+    """
+    username: str = Field(..., min_length=3, max_length=50)
+    email: EmailStr
+    hashed_password: str
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = None
 
-
-class User(Base):
-    __tablename__ = "users"
-
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(50), unique=True, index=True, nullable=False)
-    email = Column(String(100), unique=True, index=True, nullable=False)
-    hashed_password = Column(String(255), nullable=False)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "username": self.username,
-            "email": self.email,
-            "is_active": self.is_active,
-            "created_at": self.created_at,
-            "updated_at": self.updated_at,
+    # Principio SOLID (O): El modelo es extensible mediante configuraciones
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "username": "aguss_dev",
+                "email": "aguss@example.com",
+                "hashed_password": "password_seguro_123",
+                "is_active": True
+            }
         }
+    }
