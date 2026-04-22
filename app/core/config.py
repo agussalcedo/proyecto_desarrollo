@@ -3,24 +3,25 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """
     Configuración centralizada de la aplicación usando Pydantic v2.
-    Lee las variables desde el archivo .env en la raíz.
     """
     
-    # Variables obligatorias (deben estar en tu archivo .env)
+    # Variables de Base de Datos
     MONGO_URL: str
     MONGO_DB_NAME: str
 
-    # Variables opcionales con valores por defecto
-    APP_NAME: str = "ILovePDF Clone API"
+    # Nombre del proyecto
+    APP_NAME: str = "Proyecto Desarrollo de Software"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
 
-    # Configuración de Pydantic
+    # Validación de tamaño
+    MAX_FILE_SIZE: int = 15 * 1024 * 1024 #Esto equivale a 15Mb
+    ALLOWED_EXTENSIONS: list = ["pdf"]
+
     model_config = SettingsConfigDict(
-        env_file=".env",           # Archivo donde buscar las variables
+        env_file=".env",
         env_file_encoding='utf-8', 
-        extra="ignore"             # Ignora variables extras en el .env que no estén aquí
+        extra="ignore"
     )
 
-# Instanciamos los settings para importarlos en otros archivos
 settings = Settings()

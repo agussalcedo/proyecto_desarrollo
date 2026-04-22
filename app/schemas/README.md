@@ -13,12 +13,12 @@ Contiene los schemas de Pydantic usados para:
 ### user_schema.py
 Schemas para el modelo User:
 
-| Schema | Uso |
-|--------|-----|
-| `UserBase` | Campos comunes (username, email) |
-| `UserCreate` | Crear usuario (username, email, password) |
-| `UserUpdate` | Actualizar usuario (campos opcionales) |
-| `UserResponse` | Respuesta completa del usuario |
+| Schema         |                 Uso                      |
+|----------------|------------------------------------------|
+| `UserBase`     | Campos comunes (username, email)         |
+| `UserCreate`   | Crear usuario (username, email, password)|
+| `UserUpdate`   | Actualizar usuario (campos opcionales)   |
+| `UserResponse` | Respuesta completa del usuario           |
 
 ## Ejemplos de Uso
 
@@ -27,9 +27,9 @@ Schemas para el modelo User:
 from app.schemas import UserCreate
 
 user_data = UserCreate(
-    username="john",
-    email="john@example.com",
-    password="secret123"
+    username="Agustin",
+    email="agustin@gmail.com",
+    password="123456"
 )
 ```
 

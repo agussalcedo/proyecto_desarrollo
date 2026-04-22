@@ -12,15 +12,11 @@ Configuraciones de la aplicación usando Pydantic Settings.
 
 ### database.py
 Gestión de conexiones a la base de datos.
-- Motor SQLAlchemy
-- Session local
-- Dependency injection para obtener DB
+- Motor MONGODB
 
 ## Requerimientos
-```txt
-sqlalchemy>=2.0.0
-pydantic-settings>=2.0.0
-```
+
+``` pydantic-settings>=2.0.0 ``` 
 
 ## Uso
 ```python
