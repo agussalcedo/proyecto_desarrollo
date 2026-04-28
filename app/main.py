@@ -10,7 +10,7 @@ from app.routes.document_routes import router as document_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Gestiona el ciclo de vida de la aplicacion.
+    .
     Verifica la conexion con la base de datos al iniciar.
     """
     # Lógica de inicio (Startup)
@@ -25,7 +25,7 @@ async def lifespan(app: FastAPI):
     # Lógica de cierre (Shutdown)
     print("LOG: Cerrando recursos de la aplicacion.")
 
-# --- PERSONALIZACIÓN DE SWAGGER ---
+# PERSONALIZACIÓN DE SWAGGER
 app = FastAPI(
     title="Proyecto Desarrollo de Software",
     description="API Profesional para la extracción y persistencia de documentos PDF. ",

@@ -2,41 +2,34 @@
 
 Capa de acceso a datos (Data Access Layer).
 
-## Descripción
-Contiene los modelos de SQLAlchemy que representan las entidades de la base de datos.
+# Descripción
 
-## Archivos
+Contiene los modelos de Pydantic que representan los esquemas de los documentos en MongoDB. A diferencia de los modelos relacionales, aquí se definen estructuras flexibles con validación automática de tipos.
 
-### user_model.py
-Modelo User con los siguientes campos:
-- `id`: Primary Key
-- `username`: Unique, indexed
-- `email`: Unique, indexed
-- `hashed_password`: Contraseña encriptada
-- `is_active`: Estado del usuario
-- `created_at`: Timestamp de creación
-- `updated_at`: Timestamp de actualización
+# Archivos
 
-## Estructura del Modelo
-```python
-class User(Base):
-    __tablename__ = "users"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    email = Column(String, unique=True, index=True)
-    hashed_password = Column(String)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime)
-    updated_at = Column(DateTime)
+document_model.py
+
+filename: Nombre original del archivo.
+content: Texto extraído del PDF.
+checksum: Suma de verificación (Hash) para integridad de datos.
+size_bytes: Tamaño del archivo validado.
+created_at: Timestamp de creación con zona horaria de Argentina (GMT-3).
+
+# Estructura del modelo
+```bash
+class Document(BaseModel):
+    filename: str
+    content: str
+    checksum: str
+    size_bytes: int
+    created_at: datetime
 ```
+# Requerimentos
 
-## Requerimientos
-```txt
-sqlalchemy>=2.0.0
-```
+pydantic >=2.10.0
 
-## Uso
-```python
-from app.models import User
+# Uso
+```bash
+from app.models import Document
 ```
