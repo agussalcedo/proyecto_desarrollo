@@ -24,7 +24,15 @@ Linux/Mac: source venv/bin/activate
 ### 3. Instalar librerias
 pip install -r requirements.txt
 
-### 4. Iniciar aplicación
+### 4. Requisitos de Infraestructura
+Para el funcionamiento de la base de datos (MongoDB), es necesario tener **Docker** instalado.
+
+**Para levantar la base de datos:**
+```bash
+docker-compose up -d
+```
+
+### 5. Iniciar aplicación
 ```bash
 uvicorn app.main:app --reload
 ```
