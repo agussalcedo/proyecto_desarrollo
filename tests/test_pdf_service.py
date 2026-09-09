@@ -1,40 +1,53 @@
+"""
+Tests unitarios - pdf_processor.py
+
+Prueban la lógica pura de extracción de texto y cálculo de checksum,
+sin depender de la base de datos ni de la capa HTTP.
+"""
+import hashlib
 import pytest
 from app.services.pdf_processor import extract_text, calculate_checksum
 
-def test_extraer_texto_de_pdf_vacio_lanza_error():
-    """Prueba que un archivo sin bytes lance error """
-    # 1. Arrange
-    pdf_vacio = b"" 
-    
-    # 2 & 3. Act & Assert
-    with pytest.raises(ValueError, match="El archivo está vacío o es inválido"):
-        extract_text(pdf_vacio)
 
-def test_archivo_no_pdf_lanza_error():
-    """Prueba que un archivo que no empieza con %PDF sea rechazado """
-    # Arrange: Un archivo de texto común
-    fake_pdf = b"Esto no es un PDF, es un texto"
-    
-    # Act & Assert
-    with pytest.raises(ValueError, match="El contenido del archivo no tiene un formato PDF válido"):
-        extract_text(fake_pdf)
+class TestExtractText:
 
-def test_calculate_checksum_es_consistente():
-    """Prueba que el checksum sea siempre el mismo para el mismo archivo"""
-    # Arrange
-    contenido = b"%PDF-1.4 prueba de contenido"
-    
-    # Act
-    hash1 = calculate_checksum(contenido)
-    hash2 = calculate_checksum(contenido)
-    
-    # Assert
-    assert hash1 == hash2
-    assert len(hash1) == 64  # SHA-256 siempre tiene 64 caracteres
+    def test_extraer_texto_de_pdf_vacio_lanza_error(self):
+        """Un archivo sin bytes debe rechazarse."""
+        with pytest.raises(ValueError, match="El archivo está vacío o es inválido"):
+            extract_text(b"")
 
-def test_calculate_checksum_diferente_para_archivos_distintos():
-    """Prueba que dos archivos distintos generen huellas distintas"""
-    archivo1 = b"%PDF-1.4 contenido A"
-    archivo2 = b"%PDF-1.4 contenido B"
-    
-    assert calculate_checksum(archivo1) != calculate_checksum(archivo2)
+    def test_archivo_no_pdf_lanza_error(self, invalid_pdf_bytes):
+        """Un archivo que no empieza con %PDF debe rechazarse."""
+        with pytest.raises(ValueError, match="El contenido del archivo no tiene un formato PDF válido"):
+            extract_text(invalid_pdf_bytes)
+
+    def test_extraer_texto_de_pdf_valido_devuelve_el_contenido(self, valid_pdf_bytes):
+        """Un PDF real y válido debe devolver el texto que contiene."""
+        texto = extract_text(valid_pdf_bytes)
+        assert "Contenido de prueba para el parcial" in texto
+
+
+class TestCalculateChecksum:
+
+    def test_calcular_checksum_de_archivo_valido(self):
+        """El checksum debe coincidir con el SHA-256 calculado manualmente."""
+        pdf_simulado = b"hola"
+        hash_esperado = hashlib.sha256(pdf_simulado).hexdigest()
+        resultado = calculate_checksum(pdf_simulado)
+        assert resultado == hash_esperado
+
+    def test_calculate_checksum_es_consistente(self):
+        """El mismo archivo debe generar siempre el mismo checksum."""
+        contenido = b"%PDF-1.4 prueba de contenido"
+        assert calculate_checksum(contenido) == calculate_checksum(contenido)
+
+    def test_calculate_checksum_diferente_para_archivos_distintos(self):
+        """Archivos distintos deben generar checksums distintos."""
+        archivo1 = b"%PDF-1.4 contenido A"
+        archivo2 = b"%PDF-1.4 contenido B"
+        assert calculate_checksum(archivo1) != calculate_checksum(archivo2)
+
+    def test_calcular_checksum_de_archivo_vacio_lanza_error(self):
+        """No se puede calcular checksum de un archivo vacío."""
+        with pytest.raises(ValueError, match="No se puede calcular el checksum de un archivo vacío"):
+            calculate_checksum(b"")
