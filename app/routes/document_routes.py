@@ -1,5 +1,6 @@
 from typing import List
 from fastapi import APIRouter, HTTPException, status, UploadFile, File
+from bson.errors import InvalidId
 from app.core.database import database
 from app.core.config import settings
 from app.schemas.document_schema import DocumentResponse, DocumentUpdate
@@ -15,11 +16,12 @@ async def upload_document(file: UploadFile = File(...)):
     Endpoint para subir un PDF, extraer texto y persistirlo.
     Incluye validaciones de formato, tamano y contenido.
     """
-    # 1. Validacion de extension por nombre de archivo
-    if not file.filename.lower().endswith(".pdf"):
+    # 1. Validacion de extension usando la lista configurada en settings
+    extension = file.filename.lower().rsplit(".", 1)[-1] if "." in file.filename else ""
+    if extension not in settings.ALLOWED_EXTENSIONS:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="La extension del archivo debe ser .pdf"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"La extension del archivo debe ser: {', '.join(settings.ALLOWED_EXTENSIONS)}"
         )
 
     # 2. Validacion de Content-Type
@@ -70,12 +72,57 @@ async def get_documents(skip: int = 0, limit: int = 100):
     service = DocumentService(repo)
     return await service.get_all(skip, limit)
 
+@router.get("/{doc_id}", response_model=DocumentResponse)
+async def get_document(doc_id: str):
+    """CRUD: Obtener un documento individual por su ID"""
+    repo = DocumentRepository(database)
+    service = DocumentService(repo)
+    try:
+        document = await service.get_by_id(doc_id)
+    except InvalidId:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El ID proporcionado no tiene un formato valido"
+        )
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Documento no encontrado"
+        )
+    return document
+
+@router.put("/{doc_id}", response_model=DocumentResponse)
+async def update_document(doc_id: str, update_data: DocumentUpdate):
+    """CRUD: Actualizar el contenido de un documento existente"""
+    repo = DocumentRepository(database)
+    service = DocumentService(repo)
+    try:
+        updated = await service.update(doc_id, update_data.model_dump(exclude_none=True))
+    except InvalidId:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El ID proporcionado no tiene un formato valido"
+        )
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Documento no encontrado"
+        )
+    return updated
+
 @router.delete("/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_document(doc_id: str):
     """CRUD: Eliminar un documento por su ID unico"""
     repo = DocumentRepository(database)
     service = DocumentService(repo)
-    if not await service.delete(doc_id):
+    try:
+        deleted = await service.delete(doc_id)
+    except InvalidId:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El ID proporcionado no tiene un formato valido"
+        )
+    if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail="Documento no encontrado"

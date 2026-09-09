@@ -10,7 +10,7 @@ client = AsyncIOMotorClient(settings.MONGO_URL)
 # Instancia de la base de datos especificada en la configuración
 database = client[settings.MONGO_DB_NAME]
 
-async def check_db_connection():
+async def check_db_connection() -> bool:
     """
     Verifica la integridad de la conexión con el servidor MongoDB.
     Realiza una operación de 'ping' para validar la autenticación y disponibilidad.
@@ -20,7 +20,8 @@ async def check_db_connection():
         await client.admin.command('ping')
         print("Status: MongoDB connection established successfully.")
         print(f"Database: {settings.MONGO_DB_NAME}")
+        return True
     except Exception as e:
         print(f"Status: MongoDB connection failed.")
         print(f"Error Detail: {e}")
-        # Se recomienda capturar la excepción en el flujo principal para manejo de errores
+        return False
