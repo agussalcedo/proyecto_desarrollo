@@ -10,6 +10,7 @@ class DocumentBase(BaseModel):
 class DocumentResponse(DocumentBase):
     id: str = Field(..., description="ID de MongoDB")
     size_bytes: int
+    client_ip: Optional[str] = Field(None, description="IP del cliente que subió el documento")
     created_at: Optional[datetime] = None 
 
     class Config:

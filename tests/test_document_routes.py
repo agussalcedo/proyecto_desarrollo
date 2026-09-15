@@ -64,6 +64,30 @@ class TestUploadDocument:
         assert response.status_code == 400
         assert "ya existe" in response.json()["detail"]
 
+    @pytest.mark.asyncio
+    async def test_subir_pdf_guarda_la_ip_del_header_x_forwarded_for(self, client, valid_pdf_bytes):
+        """
+        Si el pedido llega con X-Forwarded-For (como lo agrega Traefik),
+        esa es la IP que se debe guardar, no la de la conexión directa.
+        """
+        response = await client.post(
+            "/documents/upload",
+            files=_pdf_file(valid_pdf_bytes),
+            headers={"X-Forwarded-For": "203.0.113.42"},
+        )
+        assert response.status_code == 201
+        assert response.json()["client_ip"] == "203.0.113.42"
+
+    @pytest.mark.asyncio
+    async def test_subir_pdf_sin_x_forwarded_for_usa_ip_de_conexion_directa(self, client, valid_pdf_bytes):
+        """
+        Sin proxy de por medio (desarrollo local sin Docker), se guarda
+        la IP de la conexión directa en vez de fallar o dejarla vacía.
+        """
+        response = await client.post("/documents/upload", files=_pdf_file(valid_pdf_bytes))
+        assert response.status_code == 201
+        assert response.json()["client_ip"] is not None
+
 
 class TestGetDocuments:
 

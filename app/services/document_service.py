@@ -7,7 +7,7 @@ class DocumentService:
     def __init__(self, repository: DocumentRepository):
         self.repository = repository
 
-    async def process_pdf(self, file_bytes: bytes, filename: str) -> dict:
+    async def process_pdf(self, file_bytes: bytes, filename: str, client_ip: Optional[str] = None) -> dict:
         """
         Lógica central: Extrae texto, calcula checksum y persiste.
         """
@@ -30,6 +30,7 @@ class DocumentService:
             content=text_content,
             checksum=checksum,
             size_bytes=len(file_bytes),
+            client_ip=client_ip,
         )
 
         return await self.repository.create(document.model_dump())

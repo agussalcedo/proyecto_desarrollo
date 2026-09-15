@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, HTTPException, Request, status, UploadFile, File
 from bson.errors import InvalidId
 from app.core.database import database
 from app.core.config import settings
@@ -10,8 +10,26 @@ from app.services.document_service import DocumentService
 # Definicion del router con su prefijo y etiquetas para Swagger
 router = APIRouter(prefix="/documents", tags=["documents"])
 
+
+def get_client_ip(request: Request) -> str:
+    """
+    Obtiene la IP real del cliente.
+
+    Si el pedido llega a través de un proxy o gateway (como Traefik), la IP
+    original del cliente viaja en el header X-Forwarded-For (Traefik la
+    agrega automáticamente). Si no hay proxy de por medio (por ejemplo,
+    corriendo local sin Docker), usamos la IP de la conexión directa.
+    """
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        # El header puede traer una cadena de IPs si hubo varios proxies
+        # ("cliente, proxy1, proxy2"); la primera es la del cliente real.
+        return forwarded_for.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
 @router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
-async def upload_document(file: UploadFile = File(...)):
+async def upload_document(request: Request, file: UploadFile = File(...)):
     """
     Endpoint para subir un PDF, extraer texto y persistirlo.
     Incluye validaciones de formato, tamano y contenido.
@@ -54,7 +72,8 @@ async def upload_document(file: UploadFile = File(...)):
     
     try:
         # El servicio gestiona Checksum, Extraccion y Persistencia
-        return await service.process_pdf(file_content, file.filename)
+        client_ip = get_client_ip(request)
+        return await service.process_pdf(file_content, file.filename, client_ip)
     except ValueError as e:
         # Captura errores de duplicados (checksum) o errores de proceso
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
