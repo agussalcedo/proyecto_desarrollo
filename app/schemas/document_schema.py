@@ -19,3 +19,8 @@ class DocumentResponse(DocumentBase):
 
 class DocumentUpdate(BaseModel):
     content: Optional[str] = None
+
+class DocumentBase64Upload(BaseModel):
+    """Payload para subir un PDF codificado en Base64 en vez de multipart/form-data."""
+    filename: str = Field(..., description="Nombre del archivo, ej: parcial.pdf")
+    file_base64: str = Field(..., description="Contenido del PDF codificado en Base64")

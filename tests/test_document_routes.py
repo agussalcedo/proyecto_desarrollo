@@ -8,6 +8,7 @@ compu del equipo, sin depender de que Docker esté levantado.
 """
 import pytest
 import pytest_asyncio
+import base64
 from httpx import AsyncClient, ASGITransport
 from mongomock_motor import AsyncMongoMockClient
 
@@ -87,6 +88,75 @@ class TestUploadDocument:
         response = await client.post("/documents/upload", files=_pdf_file(valid_pdf_bytes))
         assert response.status_code == 201
         assert response.json()["client_ip"] is not None
+
+
+class TestUploadDocumentBase64:
+
+    @pytest.mark.asyncio
+    async def test_subir_pdf_en_base64_valido_devuelve_201(self, client, valid_pdf_bytes):
+        payload = {
+            "filename": "parcial.pdf",
+            "file_base64": base64.b64encode(valid_pdf_bytes).decode("ascii"),
+        }
+        response = await client.post("/documents/upload-base64", json=payload)
+        assert response.status_code == 201
+        body = response.json()
+        assert body["filename"] == "parcial.pdf"
+        assert "Contenido de prueba" in body["content"]
+
+    @pytest.mark.asyncio
+    async def test_subir_base64_invalido_devuelve_400(self, client):
+        payload = {
+            "filename": "parcial.pdf",
+            "file_base64": "esto-no-es-base64-valido-@@@",
+        }
+        response = await client.post("/documents/upload-base64", json=payload)
+        assert response.status_code == 400
+        assert "Base64" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_subir_base64_de_algo_que_no_es_pdf_devuelve_400(self, client, invalid_pdf_bytes):
+        payload = {
+            "filename": "no_es_pdf.pdf",
+            "file_base64": base64.b64encode(invalid_pdf_bytes).decode("ascii"),
+        }
+        response = await client.post("/documents/upload-base64", json=payload)
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_subir_base64_con_extension_invalida_devuelve_400(self, client, valid_pdf_bytes):
+        payload = {
+            "filename": "foto.png",
+            "file_base64": base64.b64encode(valid_pdf_bytes).decode("ascii"),
+        }
+        response = await client.post("/documents/upload-base64", json=payload)
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_subir_mismo_pdf_por_base64_y_por_archivo_detecta_duplicado(self, client, valid_pdf_bytes):
+        """El checksum es el mismo sin importar por qué endpoint se subió."""
+        await client.post("/documents/upload", files=_pdf_file(valid_pdf_bytes))
+        payload = {
+            "filename": "otro_nombre.pdf",
+            "file_base64": base64.b64encode(valid_pdf_bytes).decode("ascii"),
+        }
+        response = await client.post("/documents/upload-base64", json=payload)
+        assert response.status_code == 400
+        assert "ya existe" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_subir_pdf_en_base64_guarda_la_ip_del_cliente(self, client, valid_pdf_bytes):
+        payload = {
+            "filename": "parcial.pdf",
+            "file_base64": base64.b64encode(valid_pdf_bytes).decode("ascii"),
+        }
+        response = await client.post(
+            "/documents/upload-base64",
+            json=payload,
+            headers={"X-Forwarded-For": "198.51.100.7"},
+        )
+        assert response.status_code == 201
+        assert response.json()["client_ip"] == "198.51.100.7"
 
 
 class TestGetDocuments:
