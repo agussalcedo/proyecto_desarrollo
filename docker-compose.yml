@@ -5,15 +5,17 @@ services:
     command:
       - "--api.insecure=true"
       - "--providers.docker=true"
-      - "--providers.docker.endpoint=tcp://host.docker.internal:2375"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
       - "--log.level=DEBUG"
     ports:
       - "80:80"
       - "8080:8080"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    volumes:
+      # Forma estandar de que Traefik "vea" los contenedores de Docker,
+      # sin necesitar habilitar el puerto TCP inseguro del daemon
+      # (que no todos tienen activado en Docker Desktop).
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - red_app
 
@@ -29,6 +31,12 @@ services:
       - "traefik.http.routers.mi_api.entrypoints=web"
       - "traefik.http.services.mi_api.loadbalancer.server.port=8000"
       - "traefik.docker.network=red_app"
+      # Rate limiting ("el patovica"): permite en promedio 10 pedidos/seg
+      # por IP, con un margen (burst) de hasta 20 antes de empezar a
+      # rechazar con 429 Too Many Requests.
+      - "traefik.http.middlewares.mi_ratelimit.ratelimit.average=10"
+      - "traefik.http.middlewares.mi_ratelimit.ratelimit.burst=20"
+      - "traefik.http.routers.mi_api.middlewares=mi_ratelimit"
     depends_on:
       - mongo
     networks:
