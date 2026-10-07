@@ -1,4 +1,47 @@
 services:
+  traefik:
+    image: traefik:v2.11
+    container_name: traefik_gateway
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--log.level=DEBUG"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      # Forma estandar de que Traefik "vea" los contenedores de Docker,
+      # sin necesitar habilitar el puerto TCP inseguro del daemon
+      # (que no todos tienen activado en Docker Desktop).
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - red_app
+
+  api:
+    build: .
+    container_name: orchestrator_service
+    restart: always
+    environment:
+      - MONGO_URL=mongodb://admin:password123@mongo:27017
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mi_api.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.mi_api.entrypoints=web"
+      - "traefik.http.services.mi_api.loadbalancer.server.port=8000"
+      - "traefik.docker.network=red_app"
+      # Rate limiting ("el patovica"): permite en promedio 10 pedidos/seg
+      # por IP, con un margen (burst) de hasta 20 antes de empezar a
+      # rechazar con 429 Too Many Requests.
+      - "traefik.http.middlewares.mi_ratelimit.ratelimit.average=10"
+      - "traefik.http.middlewares.mi_ratelimit.ratelimit.burst=20"
+      - "traefik.http.routers.mi_api.middlewares=mi_ratelimit"
+    depends_on:
+      - mongo
+    networks:
+      - red_app
+
   mongo:
     image: mongo:latest
     container_name: proyecto_desarrollo_db
@@ -6,11 +49,17 @@ services:
     ports:
       - "27017:27017"
     environment:
-      # Definimos un usuario y contraseña por defecto para que todos usen el mismo
       - MONGO_INITDB_ROOT_USERNAME=admin
       - MONGO_INITDB_ROOT_PASSWORD=password123
     volumes:
       - mongo_data:/data/db
+    networks:
+      - red_app
+
+networks:
+  red_app:
+    name: red_app
+    driver: bridge
 
 volumes:
   mongo_data:
