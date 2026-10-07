@@ -1,38 +1,32 @@
-# Integrantes del grupo
+\# Integrantes del grupo
+
 Agustin Salcedo, Juan Pablo Cañada, Nicolas Martínez, Carlos Reta, Santiago Miscovich
 
-## Instalación y Ejecución
+
+
+\## Instalación y Ejecución
+
+
 
 Pasos para configurar el entorno y ejecutar la aplicación localmente:
 
-### 1. Requisitos Previos
-* Python 3.12 o superior.
-* Se recomienda el uso de un entorno virtual (`venv`).
 
-### 2. Configuración del Entorno
-Clone el repositorio y cree un entorno virtual:
-```bash
-git clone <URL_DEL_REPOSITORIO>
-cd <NOMBRE_CARPETA>
-python -m venv venv
-```
-Activar el entorno virtual
 
-Windows: venv\Scripts\activate
-Linux/Mac: source venv/bin/activate
+\### 1. Requisitos Previos
 
-### 3. Instalar librerias
-pip install -r requirements.txt
+\* Python 3.12 o superior (se instala automáticamente en el paso 3 si no lo tenés).
 
-### 4. Requisitos de Infraestructura
-Para el funcionamiento de la base de datos (MongoDB), es necesario tener **Docker** instalado.
+\* \[uv](https://docs.astral.sh/uv/) como gestor de dependencias y entornos virtuales.
 
-**Para levantar la base de datos:**
-```bash
-docker-compose up -d
-```
+\* \[Docker Desktop](https://www.docker.com/products/docker-desktop/) para levantar la base de datos MongoDB.
 
-### 5. Iniciar aplicación
-```bash
-uvicorn app.main:app --reload
-```
+
+
+\### 2. Instalar uv
+
+\*\*Windows (PowerShell):\*\*
+
+```powershell
+
+irm https://astral.sh/uv/install.ps1 | iex
+
