@@ -1,15 +1,16 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { SharedArray } from 'k6/data';
+import { Counter } from 'k6/metrics';
 
 const usuarios = new SharedArray('usuarios', function () {
   return JSON.parse(open('./megafile_usuarios.json'));
 });
 
-// Le decimos a k6 explícitamente que tanto 200 (paso) como 429 (rate
-// limit activo) son respuestas ESPERADAS, no fallas del sistema. Sin
-// esto, k6 cuenta cualquier 429 como "request fallido" por defecto,
-// aunque sea justamente el comportamiento que queremos del gateway.
+// Contadores personalizados para ver en la consola final
+const respuestas200 = new Counter('respuestas_200_ok');
+const respuestas429 = new Counter('respuestas_429_ratelimit');
+
 http.setResponseCallback(http.expectedStatuses(200, 429));
 
 export const options = {
@@ -34,9 +35,14 @@ export default function () {
     },
   });
 
+  if (respuesta.status === 200) {
+    respuestas200.add(1);
+  } else if (respuesta.status === 429) {
+    respuestas429.add(1);
+  }
+
   check(respuesta, {
-    'respondio 200 (paso) o 429 (rate limit activo)': (r) =>
-      r.status === 200 || r.status === 429,
+    'codigo valido (200 o 429)': (r) => r.status === 200 || r.status === 429,
   });
 
   sleep(1);
