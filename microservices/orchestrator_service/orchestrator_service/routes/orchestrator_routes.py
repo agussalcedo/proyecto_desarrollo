@@ -16,14 +16,9 @@ _service = OrchestratorService()
 async def get_status():
     """
     Verifica el estado del orquestador y de los microservicios de los que depende.
+    El estado de cada dependencia es "ready", "not_ready" o "unreachable".
     """
-    try:
-        health = await _service.check_document_service_health()
-        dependency = ServiceHealthResponse(
-            service="document_service",
-            status=health.get("status", "unknown"),
-        )
-    except Exception:
-        dependency = ServiceHealthResponse(service="document_service", status="unreachable")
+    document_service_status = await _service.check_document_service_health()
+    dependency = ServiceHealthResponse(service="document_service", status=document_service_status)
 
     return OrchestratorStatusResponse(orchestrator="online", dependencies=[dependency])

@@ -44,8 +44,17 @@ services:
       - "traefik.http.middlewares.mi_ratelimit.ratelimit.average=10"
       - "traefik.http.middlewares.mi_ratelimit.ratelimit.burst=20"
       - "traefik.http.routers.document_api.middlewares=mi_ratelimit"
+    # Liveness: la imagen python-slim no trae curl, así que se usa Python.
+    # Falla (exit 1) si /health/live no responde 2xx.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     networks:
       - red_app
 
@@ -67,8 +76,15 @@ services:
       - "traefik.http.services.orchestrator_api.loadbalancer.server.port=8000"
       - "traefik.docker.network=red_app"
       - "traefik.http.routers.orchestrator_api.middlewares=mi_ratelimit@docker"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/orchestrator/health/live', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     depends_on:
-      - document_service
+      document_service:
+        condition: service_healthy
     networks:
       - red_app
 
@@ -83,6 +99,13 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD=password123
     volumes:
       - mongo_data:/data/db
+    # "ping" no requiere autenticación, por eso no hacen falta credenciales acá.
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - red_app
 
