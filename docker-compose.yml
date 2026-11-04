@@ -19,26 +19,56 @@ services:
     networks:
       - red_app
 
-  api:
-    build: .
-    container_name: orchestrator_service
+  # ---------------------------------------------------------------
+  # Microservicio de documentos: extracción de PDF y persistencia
+  # en MongoDB. Responde en /documents, /health, /docs y /.
+  # ---------------------------------------------------------------
+  document_service:
+    build: ./microservices/document_service
+    container_name: document_service
     restart: always
     environment:
       - MONGO_URL=mongodb://admin:password123@mongo:27017
+      - MONGO_DB_NAME=proyecto_desarrollo
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.mi_api.rule=PathPrefix(`/`)"
-      - "traefik.http.routers.mi_api.entrypoints=web"
-      - "traefik.http.services.mi_api.loadbalancer.server.port=8000"
+      - "traefik.http.routers.document_api.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.document_api.priority=1"
+      - "traefik.http.routers.document_api.entrypoints=web"
+      - "traefik.http.services.document_api.loadbalancer.server.port=8000"
       - "traefik.docker.network=red_app"
       # Rate limiting ("el patovica"): permite en promedio 10 pedidos/seg
       # por IP, con un margen (burst) de hasta 20 antes de empezar a
-      # rechazar con 429 Too Many Requests.
+      # rechazar con 429 Too Many Requests. Se define una sola vez y lo
+      # usan los routers de ambos microservicios.
       - "traefik.http.middlewares.mi_ratelimit.ratelimit.average=10"
       - "traefik.http.middlewares.mi_ratelimit.ratelimit.burst=20"
-      - "traefik.http.routers.mi_api.middlewares=mi_ratelimit"
+      - "traefik.http.routers.document_api.middlewares=mi_ratelimit"
     depends_on:
       - mongo
+    networks:
+      - red_app
+
+  # ---------------------------------------------------------------
+  # Microservicio orquestador: coordina llamadas al document_service.
+  # Responde en /orchestrator (docs en /orchestrator/docs).
+  # ---------------------------------------------------------------
+  orchestrator_service:
+    build: ./microservices/orchestrator_service
+    container_name: orchestrator_service
+    restart: always
+    environment:
+      - DOCUMENT_SERVICE_URL=http://document_service:8000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.orchestrator_api.rule=PathPrefix(`/orchestrator`)"
+      - "traefik.http.routers.orchestrator_api.priority=10"
+      - "traefik.http.routers.orchestrator_api.entrypoints=web"
+      - "traefik.http.services.orchestrator_api.loadbalancer.server.port=8000"
+      - "traefik.docker.network=red_app"
+      - "traefik.http.routers.orchestrator_api.middlewares=mi_ratelimit@docker"
+    depends_on:
+      - document_service
     networks:
       - red_app
 
