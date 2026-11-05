@@ -138,6 +138,52 @@ class TestRetry:
         assert respuestas.llamadas == 2
 
 
+class TestTimeouts:
+
+    def test_el_timeout_de_conexion_es_mas_corto_que_el_de_lectura(self):
+        cliente = MicroserviceClient(base_url="http://servicio", timeout=5.0, connect_timeout=2.0)
+
+        assert cliente.timeout.connect == 2.0
+        assert cliente.timeout.read == 5.0
+
+    def test_sin_timeout_de_conexion_usa_el_general(self):
+        cliente = MicroserviceClient(base_url="http://servicio", timeout=5.0)
+
+        assert cliente.timeout.connect == 5.0
+
+    @pytest.mark.asyncio
+    async def test_get_reintenta_un_timeout_de_lectura(self):
+        respuestas = Respuestas(httpx.ReadTimeout("lento"), 200)
+        cliente, _ = _cliente(respuestas)
+
+        resultado = await cliente.get("/x")
+
+        assert resultado == {"codigo": 200}
+        assert respuestas.llamadas == 2
+
+    @pytest.mark.asyncio
+    async def test_post_no_se_reintenta_ante_un_timeout_de_lectura(self):
+        # El servidor pudo haber recibido el pedido y procesarlo: no se repite.
+        respuestas = Respuestas(httpx.ReadTimeout("lento"))
+        cliente, _ = _cliente(respuestas)
+
+        with pytest.raises(httpx.ReadTimeout):
+            await cliente.post("/documents", json={"a": 1})
+
+        assert respuestas.llamadas == 1
+
+    @pytest.mark.asyncio
+    async def test_los_timeouts_cuentan_como_fallo_para_el_circuit_breaker(self):
+        respuestas = Respuestas(httpx.ReadTimeout("lento"))
+        breaker = CircuitBreaker(failure_threshold=1, clock=FakeClock())
+        cliente, _ = _cliente(respuestas, max_attempts=1, breaker=breaker)
+
+        with pytest.raises(httpx.ReadTimeout):
+            await cliente.get("/x")
+
+        assert breaker.state is CircuitState.OPEN
+
+
 class TestCircuitBreakerEnElCliente:
 
     @pytest.mark.asyncio

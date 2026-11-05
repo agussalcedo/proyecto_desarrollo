@@ -8,6 +8,15 @@ services:
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
       - "--log.level=DEBUG"
+      # Timeouts (limitan cuánto puede tardar un pedido y evitan conexiones colgadas):
+      #  - readTimeout:           máximo para recibir el pedido completo (incluye el PDF subido)
+      #  - writeTimeout:          máximo para tener lista la respuesta (cuenta el procesamiento)
+      #  - dialTimeout:           máximo para conectarse a un microservicio
+      #  - responseHeaderTimeout: máximo para que el microservicio empiece a responder
+      - "--entryPoints.web.transport.respondingTimeouts.readTimeout=30s"
+      - "--entryPoints.web.transport.respondingTimeouts.writeTimeout=60s"
+      - "--serversTransport.forwardingTimeouts.dialTimeout=5s"
+      - "--serversTransport.forwardingTimeouts.responseHeaderTimeout=30s"
     ports:
       - "80:80"
       - "8080:8080"
@@ -37,10 +46,12 @@ services:
       - "traefik.http.routers.document_api.entrypoints=web"
       - "traefik.http.services.document_api.loadbalancer.server.port=8000"
       - "traefik.docker.network=red_app"
-      # Rate limiting ("el patovica"): permite en promedio 10 pedidos/seg
-      # por IP, con un margen (burst) de hasta 20 antes de empezar a
-      # rechazar con 429 Too Many Requests. Se define una sola vez y lo
-      # usan los routers de ambos microservicios.
+      # Rate limiting ("el patovica"): limita cuántos pedidos puede hacer un
+      # mismo origen. Permite en promedio 10 pedidos/seg, con un margen (burst)
+      # de hasta 20 en ráfaga; lo que excede se rechaza con 429 Too Many Requests.
+      # El origen es la IP de la conexión (Traefik no mira X-Forwarded-For salvo
+      # que se configure ipStrategy). Se define una sola vez y lo usan los
+      # routers de ambos microservicios.
       - "traefik.http.middlewares.mi_ratelimit.ratelimit.average=10"
       - "traefik.http.middlewares.mi_ratelimit.ratelimit.burst=20"
       - "traefik.http.routers.document_api.middlewares=mi_ratelimit"
@@ -68,6 +79,15 @@ services:
     restart: always
     environment:
       - DOCUMENT_SERVICE_URL=http://document_service:8000
+      # Timeouts hacia document_service (segundos)
+      - CONNECT_TIMEOUT_SECONDS=2
+      - REQUEST_TIMEOUT_SECONDS=5
+      # Retry: intentos totales y espera base (se duplica en cada reintento)
+      - RETRY_MAX_ATTEMPTS=3
+      - RETRY_BACKOFF_SECONDS=0.2
+      # Circuit Breaker: fallos seguidos para abrir y segundos hasta volver a probar
+      - CIRCUIT_FAILURE_THRESHOLD=5
+      - CIRCUIT_RECOVERY_SECONDS=30
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.orchestrator_api.rule=PathPrefix(`/orchestrator`)"

@@ -23,6 +23,7 @@ class OrchestratorService:
         self._document_client = MicroserviceClient(
             base_url=settings.DOCUMENT_SERVICE_URL,
             timeout=settings.REQUEST_TIMEOUT_SECONDS,
+            connect_timeout=settings.CONNECT_TIMEOUT_SECONDS,
             max_attempts=settings.RETRY_MAX_ATTEMPTS,
             backoff_seconds=settings.RETRY_BACKOFF_SECONDS,
             breaker=CircuitBreaker(

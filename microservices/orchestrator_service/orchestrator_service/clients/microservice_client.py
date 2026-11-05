@@ -63,6 +63,7 @@ class MicroserviceClient:
         self,
         base_url: str,
         timeout: float = 5.0,
+        connect_timeout: Optional[float] = None,
         max_attempts: int = 3,
         backoff_seconds: float = 0.2,
         max_backoff_seconds: float = 2.0,
@@ -75,7 +76,12 @@ class MicroserviceClient:
             raise ValueError("max_attempts debe ser al menos 1")
 
         self._base_url = base_url
-        self._timeout = timeout
+        # `timeout` limita cada espera (lectura, escritura); `connect_timeout`, solo
+        # el establecimiento de la conexión. Si no se indica, usan el mismo valor.
+        self._timeout = httpx.Timeout(
+            timeout,
+            connect=connect_timeout if connect_timeout is not None else timeout,
+        )
         self._max_attempts = max_attempts
         self._backoff_seconds = backoff_seconds
         self._max_backoff_seconds = max_backoff_seconds
@@ -87,6 +93,10 @@ class MicroserviceClient:
     @property
     def breaker(self) -> CircuitBreaker:
         return self._breaker
+
+    @property
+    def timeout(self) -> httpx.Timeout:
+        return self._timeout
 
     async def get(self, path: str, params: Optional[dict] = None) -> Any:
         return await self._request("GET", path, idempotent=True, params=params)
