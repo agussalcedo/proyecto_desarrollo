@@ -50,8 +50,10 @@ services:
       # mismo origen. Permite en promedio 10 pedidos/seg, con un margen (burst)
       # de hasta 20 en ráfaga; lo que excede se rechaza con 429 Too Many Requests.
       # El origen es la IP de la conexión (Traefik no mira X-Forwarded-For salvo
-      # que se configure ipStrategy). Se define una sola vez y lo usan los
-      # routers de ambos microservicios.
+      # que se configure ipStrategy). Cada microservicio define su PROPIO middleware:
+      # si uno se cae, sus labels desaparecen de Traefik, y el otro no puede
+      # depender de ellas (si no, su ruta también dejaría de funcionar y
+      # respondería 404 en vez de informar el estado de la dependencia).
       - "traefik.http.middlewares.mi_ratelimit.ratelimit.average=10"
       - "traefik.http.middlewares.mi_ratelimit.ratelimit.burst=20"
       - "traefik.http.routers.document_api.middlewares=mi_ratelimit"
@@ -95,7 +97,10 @@ services:
       - "traefik.http.routers.orchestrator_api.entrypoints=web"
       - "traefik.http.services.orchestrator_api.loadbalancer.server.port=8000"
       - "traefik.docker.network=red_app"
-      - "traefik.http.routers.orchestrator_api.middlewares=mi_ratelimit@docker"
+      # Mismo límite que document_service, pero definido acá (ver el comentario de arriba).
+      - "traefik.http.middlewares.orchestrator_ratelimit.ratelimit.average=10"
+      - "traefik.http.middlewares.orchestrator_ratelimit.ratelimit.burst=20"
+      - "traefik.http.routers.orchestrator_api.middlewares=orchestrator_ratelimit"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/orchestrator/health/live', timeout=3)"]
       interval: 15s
