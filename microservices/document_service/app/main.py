@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from app.core.config import settings
 from app.core.database import check_db_connection
 from app.routes.document_routes import router as document_router
+from app.routes.health_routes import router as health_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -37,8 +38,9 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Registro de las rutas de documentos
+# Registro de las rutas de documentos y de health checks
 app.include_router(document_router)
+app.include_router(health_router)
 
 @app.get("/", tags=["Estado del Sistema"])
 def root():
@@ -48,8 +50,3 @@ def root():
         "version": settings.APP_VERSION,
         "status": "online"
     }
-
-@app.get("/health", tags=["Estado del Sistema"])
-def health_check():
-    """Verificacion basica de estado del servicio"""
-    return {"status": "healthy"}

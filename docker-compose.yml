@@ -8,6 +8,15 @@ services:
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
       - "--log.level=DEBUG"
+      # Timeouts (limitan cuánto puede tardar un pedido y evitan conexiones colgadas):
+      #  - readTimeout:           máximo para recibir el pedido completo (incluye el PDF subido)
+      #  - writeTimeout:          máximo para tener lista la respuesta (cuenta el procesamiento)
+      #  - dialTimeout:           máximo para conectarse a un microservicio
+      #  - responseHeaderTimeout: máximo para que el microservicio empiece a responder
+      - "--entryPoints.web.transport.respondingTimeouts.readTimeout=30s"
+      - "--entryPoints.web.transport.respondingTimeouts.writeTimeout=60s"
+      - "--serversTransport.forwardingTimeouts.dialTimeout=5s"
+      - "--serversTransport.forwardingTimeouts.responseHeaderTimeout=30s"
     ports:
       - "80:80"
       - "8080:8080"
@@ -19,26 +28,88 @@ services:
     networks:
       - red_app
 
-  api:
-    build: .
-    container_name: orchestrator_service
+  # ---------------------------------------------------------------
+  # Microservicio de documentos: extracción de PDF y persistencia
+  # en MongoDB. Responde en /documents, /health, /docs y /.
+  # ---------------------------------------------------------------
+  document_service:
+    build: ./microservices/document_service
+    container_name: document_service
     restart: always
     environment:
       - MONGO_URL=mongodb://admin:password123@mongo:27017
+      - MONGO_DB_NAME=proyecto_desarrollo
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.mi_api.rule=PathPrefix(`/`)"
-      - "traefik.http.routers.mi_api.entrypoints=web"
-      - "traefik.http.services.mi_api.loadbalancer.server.port=8000"
+      - "traefik.http.routers.document_api.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.document_api.priority=1"
+      - "traefik.http.routers.document_api.entrypoints=web"
+      - "traefik.http.services.document_api.loadbalancer.server.port=8000"
       - "traefik.docker.network=red_app"
-      # Rate limiting ("el patovica"): permite en promedio 10 pedidos/seg
-      # por IP, con un margen (burst) de hasta 20 antes de empezar a
-      # rechazar con 429 Too Many Requests.
+      # Rate limiting ("el patovica"): limita cuántos pedidos puede hacer un
+      # mismo origen. Permite en promedio 10 pedidos/seg, con un margen (burst)
+      # de hasta 20 en ráfaga; lo que excede se rechaza con 429 Too Many Requests.
+      # El origen es la IP de la conexión (Traefik no mira X-Forwarded-For salvo
+      # que se configure ipStrategy). Cada microservicio define su PROPIO middleware:
+      # si uno se cae, sus labels desaparecen de Traefik, y el otro no puede
+      # depender de ellas (si no, su ruta también dejaría de funcionar y
+      # respondería 404 en vez de informar el estado de la dependencia).
       - "traefik.http.middlewares.mi_ratelimit.ratelimit.average=10"
       - "traefik.http.middlewares.mi_ratelimit.ratelimit.burst=20"
-      - "traefik.http.routers.mi_api.middlewares=mi_ratelimit"
+      - "traefik.http.routers.document_api.middlewares=mi_ratelimit"
+    # Liveness: la imagen python-slim no trae curl, así que se usa Python.
+    # Falla (exit 1) si /health/live no responde 2xx.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
+    networks:
+      - red_app
+
+  # ---------------------------------------------------------------
+  # Microservicio orquestador: coordina llamadas al document_service.
+  # Responde en /orchestrator (docs en /orchestrator/docs).
+  # ---------------------------------------------------------------
+  orchestrator_service:
+    build: ./microservices/orchestrator_service
+    container_name: orchestrator_service
+    restart: always
+    environment:
+      - DOCUMENT_SERVICE_URL=http://document_service:8000
+      # Timeouts hacia document_service (segundos)
+      - CONNECT_TIMEOUT_SECONDS=2
+      - REQUEST_TIMEOUT_SECONDS=5
+      # Retry: intentos totales y espera base (se duplica en cada reintento)
+      - RETRY_MAX_ATTEMPTS=3
+      - RETRY_BACKOFF_SECONDS=0.2
+      # Circuit Breaker: fallos seguidos para abrir y segundos hasta volver a probar
+      - CIRCUIT_FAILURE_THRESHOLD=5
+      - CIRCUIT_RECOVERY_SECONDS=30
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.orchestrator_api.rule=PathPrefix(`/orchestrator`)"
+      - "traefik.http.routers.orchestrator_api.priority=10"
+      - "traefik.http.routers.orchestrator_api.entrypoints=web"
+      - "traefik.http.services.orchestrator_api.loadbalancer.server.port=8000"
+      - "traefik.docker.network=red_app"
+      # Mismo límite que document_service, pero definido acá (ver el comentario de arriba).
+      - "traefik.http.middlewares.orchestrator_ratelimit.ratelimit.average=10"
+      - "traefik.http.middlewares.orchestrator_ratelimit.ratelimit.burst=20"
+      - "traefik.http.routers.orchestrator_api.middlewares=orchestrator_ratelimit"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/orchestrator/health/live', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    depends_on:
+      document_service:
+        condition: service_healthy
     networks:
       - red_app
 
@@ -53,6 +124,13 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD=password123
     volumes:
       - mongo_data:/data/db
+    # "ping" no requiere autenticación, por eso no hacen falta credenciales acá.
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - red_app
 

@@ -1,6 +1,14 @@
 """
 Fixtures compartidas para toda la suite de tests.
 """
+import os
+
+# La app lee su configuración al importarse. Estos valores por defecto hacen
+# que la suite corra aunque no exista un archivo .env (por ejemplo en la compu
+# de otro integrante del equipo o en CI). Si ya están definidos, no se pisan.
+os.environ.setdefault("MONGO_URL", "mongodb://localhost:27017")
+os.environ.setdefault("MONGO_DB_NAME", "proyecto_desarrollo_test")
+
 import pytest
 import fitz  # PyMuPDF
 

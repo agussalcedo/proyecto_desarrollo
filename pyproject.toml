@@ -21,3 +21,13 @@ dev = [
     "mongomock-motor>=0.0.36",
     "pytest-asyncio>=1.4.0",
 ]
+
+[tool.pytest.ini_options]
+# Cada microservicio tiene su propio paquete raíz (app / orchestrator_service)
+# dentro de microservices/<servicio>/. Se agregan al path para poder correr
+# pytest desde la raíz del repositorio.
+pythonpath = [
+    "microservices/document_service",
+    "microservices/orchestrator_service",
+]
+testpaths = ["microservices"]
