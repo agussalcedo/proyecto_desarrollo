@@ -6,7 +6,10 @@ from typing import Optional
 
 from orchestrator_service.core.config import settings
 from orchestrator_service.schemas.orchestrator_schema import LivenessResponse, ReadinessResponse
-from orchestrator_service.services.orchestrator_service import OrchestratorService
+from orchestrator_service.services.orchestrator_service import (
+    OrchestratorService,
+    get_orchestrator_service,
+)
 
 
 class HealthService:
@@ -17,7 +20,7 @@ class HealthService:
     """
 
     def __init__(self, orchestrator: Optional[OrchestratorService] = None) -> None:
-        self._orchestrator = orchestrator or OrchestratorService()
+        self._orchestrator = orchestrator or get_orchestrator_service()
         self._started_at = time.monotonic()
 
     def liveness(self) -> LivenessResponse:

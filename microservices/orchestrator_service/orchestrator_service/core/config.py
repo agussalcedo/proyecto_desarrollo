@@ -11,6 +11,14 @@ class Settings(BaseSettings):
     DOCUMENT_SERVICE_URL: str = "http://document_service:8000"
     REQUEST_TIMEOUT_SECONDS: float = 5.0
 
+    # Retry: cantidad total de intentos (1 = sin reintentos) y espera base entre ellos.
+    RETRY_MAX_ATTEMPTS: int = 3
+    RETRY_BACKOFF_SECONDS: float = 0.2
+
+    # Circuit Breaker: fallos seguidos para abrir y segundos antes de volver a probar.
+    CIRCUIT_FAILURE_THRESHOLD: int = 5
+    CIRCUIT_RECOVERY_SECONDS: float = 30.0
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
