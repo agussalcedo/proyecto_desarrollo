@@ -238,6 +238,6 @@ class TestHealthEndpoints:
 
     @pytest.mark.asyncio
     async def test_health_devuelve_healthy(self, client):
-        response = await client.get("/health")
+        response = await client.get("/health/live")
         assert response.status_code == 200
-        assert response.json()["status"] == "healthy"
+        assert response.json()["status"] == "alive"
