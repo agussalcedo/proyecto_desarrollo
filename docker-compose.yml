@@ -134,6 +134,22 @@ services:
     networks:
       - red_app
 
+  # ---------------------------------------------------------------
+  # Consul: registro de servicios y panel de salud (UI en :8500).
+  # Solo observa: ningún servicio depende de él. Los servicios se
+  # declaran en ./consul/services.json con su health check HTTP.
+  # ---------------------------------------------------------------
+  consul:
+    image: hashicorp/consul:2.1.0
+    container_name: consul
+    command: ["agent", "-dev", "-client=0.0.0.0"]
+    ports:
+      - "8500:8500"
+    volumes:
+      - ./consul/services.json:/consul/config/services.json:ro
+    networks:
+      - red_app
+
 networks:
   red_app:
     name: red_app

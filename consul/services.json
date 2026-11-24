@@ -1,0 +1,24 @@
+{
+  "services": [
+    {
+      "name": "document_service",
+      "address": "document_service",
+      "port": 8000,
+      "check": {
+        "http": "http://document_service:8000/health/live",
+        "interval": "15s",
+        "timeout": "3s"
+      }
+    },
+    {
+      "name": "orchestrator_service",
+      "address": "orchestrator_service",
+      "port": 8000,
+      "check": {
+        "http": "http://orchestrator_service:8000/orchestrator/health/live",
+        "interval": "15s",
+        "timeout": "3s"
+      }
+    }
+  ]
+}
