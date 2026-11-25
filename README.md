@@ -20,8 +20,11 @@ flowchart LR
 | **document_service** (FastAPI) | Extracción de texto de PDFs y persistencia de documentos en MongoDB. Responde en `/documents`, `/health` y `/docs`. | `document_service` |
 | **orchestrator_service** (FastAPI) | Coordina llamadas a otros microservicios. Hoy consulta el estado de `document_service`. Responde en `/orchestrator`. | `orchestrator_service` |
 | **MongoDB** (puerto 27017) | Base de datos de documentos. | `proyecto_desarrollo_db` |
+| **Consul** (puerto 8500) | Registro de servicios y panel de salud, en modo desarrollo. Hace un health check HTTP a cada microservicio (declarados en `consul/services.json`). Solo observa: ningún servicio depende de él, y los microservicios se siguen encontrando por el DNS de Docker (nombre del contenedor). | `consul` |
 
 Todo el tráfico externo debe entrar por Traefik (`http://localhost`, **sin** `:8000`). Los microservicios no exponen su puerto hacia afuera.
+
+Los contenedores de los microservicios corren con un usuario sin privilegios (`appuser`), no como root.
 
 ### Servicios vs. microservicios
 
@@ -129,19 +132,19 @@ Todo se ajusta con variables de entorno del `orchestrator_service` en `docker-co
 * (Opcional, solo si querés correr la app sin Docker para desarrollo) uv y Python 3.12+.
 * k6 para correr las pruebas de carga.
 
-### 2. Levantar todo el stack (Traefik + microservicios + MongoDB)
+### 2. Levantar todo el stack (Traefik + microservicios + MongoDB + Consul)
 ```bash
 git clone https://github.com/agussalcedo/proyecto_desarrollo.git
 cd proyecto_desarrollo
 docker-compose up --build -d
 ```
 
-Verificar que los 4 contenedores estén arriba (los microservicios pueden tardar unos segundos en pasar a `healthy`):
+Verificar que los 5 contenedores estén arriba (los microservicios pueden tardar unos segundos en pasar a `healthy`):
 ```bash
 docker ps
 ```
 
-Deberías ver `traefik_gateway`, `document_service`, `orchestrator_service` y `proyecto_desarrollo_db`.
+Deberías ver `traefik_gateway`, `document_service`, `orchestrator_service`, `proyecto_desarrollo_db` y `consul`.
 
 ### 3. Probar que funciona
 ```bash
@@ -154,6 +157,7 @@ Páginas útiles:
 - `http://localhost/docs`: documentación interactiva de `document_service`.
 - `http://localhost/orchestrator/docs`: documentación interactiva del orquestador.
 - `http://localhost:8080`: dashboard de Traefik (routers, servicios y middlewares).
+- `http://localhost:8500`: panel de Consul (servicios registrados y estado de sus health checks).
 
 ### 4. Correr las pruebas de carga con k6
 ```bash
